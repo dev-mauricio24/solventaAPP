@@ -1,0 +1,25 @@
+eureka:
+  client:
+    register-with-eureka: false
+
+server:
+  port: 8080
+
+spring:
+  application:
+    name: solventa-gateway
+
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: true
+      routes:
+        - id: testmc
+          uri: http://localhost:8090
+          predicates:
+            - Path=/api/testmc/**
+        - id: user
+          uri: http://localhost:8001 #lb://msvc-course # lb://msvc-student
+          predicates:
+            - Path=/api/solventa/user/**

@@ -1,0 +1,2 @@
+insert into users (name, last_name, email, password, role, status) values("David", "Rios", "david@Correo.com", "12345*", "ADMIN", "ACTIVE")
+insert into users (name, last_name, email, password, role, status) values("Arrieta", "Arrieta", "mauricio@Correo.com", "12345*", "USER", "ACTIVE")

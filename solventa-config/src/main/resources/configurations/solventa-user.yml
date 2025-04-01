@@ -1,0 +1,29 @@
+server:
+  port: 8001
+
+spring:
+  application:
+    name: solventa-user
+
+  datasource:
+    url: jdbc:mysql://localhost:3306/studentDB
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: root
+    password: Hilm2102
+
+    hikari:
+      connection-timeout: 40000  # Timeout de conexión (30 segundos)
+
+  jpa:
+    hibernate:
+      ddl-auto: create
+      jdbc:
+        time_out: 40  # Timeout de ejecución de consultas
+    database-platform: org.hibernate.dialect.MySQL8Dialect
+
+eureka:
+  instance:
+    hostname: localhost
+  client:
+    service-url:
+      default-zone: http://localhost:8761/eureka/
