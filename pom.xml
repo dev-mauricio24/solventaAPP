@@ -20,8 +20,9 @@
         <module>solventa-gateway</module>
         <module>solventa-eureka</module>
         <module>solventa-config</module>
-        <module>solventa-testmc</module>
         <module>solventa-user</module>
+        <module>solventa-device</module>
+        <module>solventa-booking</module>
     </modules>
 
     <properties>

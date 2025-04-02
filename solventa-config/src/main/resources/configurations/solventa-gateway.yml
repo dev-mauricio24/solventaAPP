@@ -15,11 +15,15 @@ spring:
         locator:
           enabled: true
       routes:
-        - id: testmc
-          uri: http://localhost:8090
-          predicates:
-            - Path=/api/testmc/**
         - id: user
           uri: http://localhost:8001 #lb://msvc-course # lb://msvc-student
           predicates:
             - Path=/api/solventa/user/**
+        - id: device
+          uri: http://localhost:8002 #lb://msvc-course # lb://msvc-student
+          predicates:
+            - Path=/api/solventa/device/**
+        - id: booking
+          uri: http://localhost:8003 #lb://msvc-course # lb://msvc-student
+          predicates:
+            - Path=/api/solventa/booking/**
