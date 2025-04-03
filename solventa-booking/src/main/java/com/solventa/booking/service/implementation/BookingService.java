@@ -7,8 +7,12 @@ import com.solventa.booking.presentation.dto.DeviceDTO;
 import com.solventa.booking.presentation.dto.UserDTO;
 import com.solventa.booking.service.client.DeviceClient;
 import com.solventa.booking.service.client.UserClient;
+import com.solventa.booking.service.exception.BookingNotFoundException;
+import com.solventa.booking.service.exception.BookingTimeoutException;
+import com.solventa.booking.service.exception.ServerErrorException;
 import com.solventa.booking.service.http.response.UserResponseHttp;
 import com.solventa.booking.service.interfaces.IBookingService;
+import com.solventa.booking.util.BookingConstants;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.QueryTimeoutException;
@@ -55,9 +59,10 @@ public class BookingService implements IBookingService {
     }
 
     @Override
-    public UserResponseHttp getById(Long id) {
+    public UserResponseHttp getById(Long id)  {
         try {
-            BookingEntity booking = repository.findById(id).orElseThrow();
+            BookingEntity booking = repository.findById(id)
+                    .orElseThrow(BookingNotFoundException::new);
             UserDTO user = userClient.getById(booking.getUserId());
             DeviceDTO device = deviceClient.getById(booking.getDeviceId());
 
@@ -69,8 +74,13 @@ public class BookingService implements IBookingService {
                     .device(device)
                     .build();
 
+        } catch (QueryTimeoutException e) {
+            log.error(BookingConstants.TIME_OUT_ERROR, e);
+            throw new BookingTimeoutException(e.getMessage());
+
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            log.error(BookingConstants.SERVER_ERROR, e);
+            throw new ServerErrorException();
         }
     }
 

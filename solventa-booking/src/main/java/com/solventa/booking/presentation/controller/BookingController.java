@@ -1,6 +1,7 @@
 package com.solventa.booking.presentation.controller;
 
 import com.solventa.booking.presentation.dto.BookingDTO;
+import com.solventa.booking.service.exception.ServerErrorException;
 import com.solventa.booking.service.interfaces.IBookingService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -26,6 +27,10 @@ public class BookingController {
     @GetMapping("/{id}")
     public ResponseEntity<?> getById(@PathVariable Long id) {
 
-        return ResponseEntity.ok(service.getById(id));
+        try {
+            return ResponseEntity.ok(service.getById(id));
+        } catch (ServerErrorException e) {
+            throw new RuntimeException(e);
+        }
     }
 }
