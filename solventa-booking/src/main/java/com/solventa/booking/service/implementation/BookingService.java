@@ -7,6 +7,7 @@ import com.solventa.booking.presentation.dto.DeviceDTO;
 import com.solventa.booking.presentation.dto.UserDTO;
 import com.solventa.booking.service.client.DeviceClient;
 import com.solventa.booking.service.client.UserClient;
+import com.solventa.booking.service.http.response.UserResponseHttp;
 import com.solventa.booking.service.interfaces.IBookingService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,13 +27,22 @@ public class BookingService implements IBookingService {
     private final DeviceClient deviceClient;
 
     @Override
-    public List<BookingDTO> getAll() {
+    public List<UserResponseHttp> getAll() {
         try {
-            List<BookingEntity> entityList = (List<BookingEntity>) repository.findAll();
+            List<BookingEntity> bookings = (List<BookingEntity>) repository.findAll();
 
-            return entityList.stream()
-                    .map(BookingDTO::convertToDto)
-                    .collect(Collectors.toList());
+            return bookings.stream().map(booking -> {
+                UserDTO user = userClient.getById(booking.getUserId());
+                DeviceDTO device = deviceClient.getById(booking.getDeviceId());
+
+                return UserResponseHttp.builder()
+                        .startDate(String.valueOf(booking.getStartDate()))
+                        .endDate(String.valueOf(booking.getEndDate()))
+                        .status(booking.getStatus())
+                        .user(user)
+                        .device(device)
+                        .build();
+            }).collect(Collectors.toList());
 
         } catch (QueryTimeoutException e) {
             log.error("Error: La consulta tardó más de 30 segundos en responder", e);
@@ -45,8 +55,23 @@ public class BookingService implements IBookingService {
     }
 
     @Override
-    public BookingDTO getById(Long id) {
-        return null;
+    public UserResponseHttp getById(Long id) {
+        try {
+            BookingEntity booking = repository.findById(id).orElseThrow();
+            UserDTO user = userClient.getById(booking.getUserId());
+            DeviceDTO device = deviceClient.getById(booking.getDeviceId());
+
+            return UserResponseHttp.builder()
+                    .startDate(String.valueOf(booking.getStartDate()))
+                    .endDate(String.valueOf(booking.getEndDate()))
+                    .status(booking.getStatus())
+                    .user(user)
+                    .device(device)
+                    .build();
+
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Override

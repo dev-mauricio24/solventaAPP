@@ -23,9 +23,9 @@ public class BookingController {
         return ResponseEntity.ok(service.save(dto));
     }
 
-    /*@GetMapping("/getUser/{id}")
-    public ResponseEntity<?> getUserFromUserService(@PathVariable Long id) {
+    @GetMapping("/{id}")
+    public ResponseEntity<?> getById(@PathVariable Long id) {
 
-        return ResponseEntity.ok(service.getUserIsExist(id));
-    }*/
+        return ResponseEntity.ok(service.getById(id));
+    }
 }
