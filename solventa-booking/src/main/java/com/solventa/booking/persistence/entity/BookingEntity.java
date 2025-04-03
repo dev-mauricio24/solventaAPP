@@ -21,6 +21,7 @@ public class BookingEntity {
     private Date startDate;
     @Column(name = "end_date")
     private Date endDate;
+    private int duration;
     @Column(name = "user_id")
     private Long userId;
     @Column(name = "device_id")
