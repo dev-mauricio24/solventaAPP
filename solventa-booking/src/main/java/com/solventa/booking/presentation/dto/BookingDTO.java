@@ -1,6 +1,8 @@
 package com.solventa.booking.presentation.dto;
 
 import com.solventa.booking.persistence.entity.BookingEntity;
+import com.solventa.booking.util.constants.BookingStatusEnum;
+
 import lombok.*;
 
 import java.util.Calendar;
@@ -18,22 +20,23 @@ public class BookingDTO {
     private int duration;
     private Long userId;
     private Long deviceId;
-    private String status;
+    private BookingStatusEnum status; 
     private String checkSum;
 
     public BookingDTO(Long userId, Long deviceId, int days) {
         this.userId = userId;
         this.deviceId = deviceId;
         this.duration = days;
-        calculateDates(); // Calcula fechas automáticamente al crear la instancia
+        this.status = BookingStatusEnum.PENDING;
+        calculateDates();
     }
 
     public void calculateDates() {
-        this.startDate = new Date(); // Fecha actual
+        this.startDate = new Date(); 
         Calendar calendar = Calendar.getInstance();
         calendar.setTime(this.startDate);
         calendar.add(Calendar.DAY_OF_MONTH, this.duration);
-        this.endDate = calendar.getTime(); // Calcula fecha de finalización
+        this.endDate = calendar.getTime();
     }
 
     public void setDays(int days) {
@@ -47,7 +50,7 @@ public class BookingDTO {
                 .endDate(dto.getEndDate())
                 .userId(dto.getUserId())
                 .deviceId(dto.getDeviceId())
-                .status(dto.getStatus())
+                .status(dto.getStatus().name())
                 .checkSum(dto.getCheckSum())
                 .build();
     }
@@ -59,7 +62,7 @@ public class BookingDTO {
                 .endDate(entity.getEndDate())
                 .userId(entity.getUserId())
                 .deviceId(entity.getDeviceId())
-                .status(entity.getStatus())
+                .status(BookingStatusEnum.valueOf(entity.getStatus())) // Convert String to enum
                 .checkSum(entity.getCheckSum())
                 .build();
     }

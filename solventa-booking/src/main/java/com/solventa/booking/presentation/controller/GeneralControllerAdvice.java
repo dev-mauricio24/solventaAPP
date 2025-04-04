@@ -1,5 +1,6 @@
 package com.solventa.booking.presentation.controller;
 
+import com.solventa.booking.presentation.dto.ErrorResponseDTO;
 import com.solventa.booking.service.exception.BookingNotFoundException;
 import com.solventa.booking.service.exception.BookingTimeoutException;
 import com.solventa.booking.service.exception.ServerErrorException;

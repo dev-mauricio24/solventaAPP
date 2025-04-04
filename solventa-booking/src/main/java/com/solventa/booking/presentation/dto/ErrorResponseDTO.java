@@ -1,4 +1,4 @@
-package com.solventa.booking.presentation.controller;
+package com.solventa.booking.presentation.dto;
 
 import lombok.Builder;
 import lombok.Getter;

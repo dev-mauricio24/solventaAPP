@@ -16,21 +16,27 @@ public class BookingController {
 
     @GetMapping
     public ResponseEntity<?> geAll() {
+    	
         return ResponseEntity.ok(service.getAll());
     }
 
     @PostMapping
     public ResponseEntity<?> save(@RequestBody BookingDTO dto) {
-        return ResponseEntity.ok(service.save(dto));
+    	
+    	return ResponseEntity.status(201).body(service.save(dto));
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<?> getById(@PathVariable Long id) {
-
-        try {
-            return ResponseEntity.ok(service.getById(id));
-        } catch (ServerErrorException e) {
-            throw new RuntimeException(e);
-        }
+    	
+       return ResponseEntity.ok(service.getById(id));
+    }
+    
+//    @PutMapping("/{id}")
+    @PatchMapping("/{id}")
+    public ResponseEntity<?> update(@PathVariable Long id, @RequestBody BookingDTO dto) {
+    	
+    	return ResponseEntity.ok(service.update(id, dto));
+ 
     }
 }

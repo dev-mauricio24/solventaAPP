@@ -12,7 +12,9 @@ import com.solventa.booking.service.exception.BookingTimeoutException;
 import com.solventa.booking.service.exception.ServerErrorException;
 import com.solventa.booking.service.http.response.UserResponseHttp;
 import com.solventa.booking.service.interfaces.IBookingService;
-import com.solventa.booking.util.BookingConstants;
+import com.solventa.booking.util.constants.BookingConstants;
+import com.solventa.booking.util.constants.BookingStatusEnum;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.QueryTimeoutException;
@@ -26,160 +28,150 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Slf4j
 public class BookingService implements IBookingService {
-    private final BookingRepository repository;
-    private final UserClient userClient;
-    private final DeviceClient deviceClient;
+	private final BookingRepository repository;
+	private final UserClient userClient;
+	private final DeviceClient deviceClient;
 
-    @Override
-    public List<UserResponseHttp> getAll() {
-        try {
-            List<BookingEntity> bookings = (List<BookingEntity>) repository.findAll();
+	@Override
+	public List<UserResponseHttp> getAll() {
+		try {
+			List<BookingEntity> bookings = (List<BookingEntity>) repository.findAll();
 
-            return bookings.stream().map(booking -> {
-                UserDTO user = userClient.getById(booking.getUserId());
-                DeviceDTO device = deviceClient.getById(booking.getDeviceId());
+			return bookings.stream().map(booking -> {
+				UserDTO user = userClient.getById(booking.getUserId());
+				DeviceDTO device = deviceClient.getById(booking.getDeviceId());
 
-                return UserResponseHttp.builder()
-                        .startDate(String.valueOf(booking.getStartDate()))
-                        .endDate(String.valueOf(booking.getEndDate()))
-                        .status(booking.getStatus())
-                        .user(user)
-                        .device(device)
-                        .build();
-            }).collect(Collectors.toList());
+				return UserResponseHttp.builder().startDate(String.valueOf(booking.getStartDate()))
+						.endDate(String.valueOf(booking.getEndDate())).status(booking.getStatus()).user(user)
+						.device(device).build();
+			}).collect(Collectors.toList());
 
-        } catch (QueryTimeoutException e) {
-            log.error("Error: La consulta tardó más de 30 segundos en responder", e);
-            return Collections.emptyList();
-        }catch (Exception e) {
-            String error = "Error inesperado al obtener la lista de usuarios";
-            log.error(error, e);
-            throw new RuntimeException(error, e);
-        }
-    }
+		} catch (QueryTimeoutException e) {
+			log.error(BookingConstants.TIME_OUT_ERROR, e);
+			throw new BookingTimeoutException(e.getMessage());
+		} catch (Exception e) {
+			log.error(BookingConstants.SERVER_ERROR, e);
+			throw new ServerErrorException();
+		}
+	}
 
-    @Override
-    public UserResponseHttp getById(Long id)  {
-        try {
-            BookingEntity booking = repository.findById(id)
-                    .orElseThrow(BookingNotFoundException::new);
-            UserDTO user = userClient.getById(booking.getUserId());
-            DeviceDTO device = deviceClient.getById(booking.getDeviceId());
+	@Override
+	public UserResponseHttp getById(Long id) {
+		try {
+			BookingEntity booking = repository.findById(id).orElseThrow(BookingNotFoundException::new);
+			UserDTO user = userClient.getById(booking.getUserId());
+			DeviceDTO device = deviceClient.getById(booking.getDeviceId());
 
-            return UserResponseHttp.builder()
-                    .startDate(String.valueOf(booking.getStartDate()))
-                    .endDate(String.valueOf(booking.getEndDate()))
-                    .status(booking.getStatus())
-                    .user(user)
-                    .device(device)
-                    .build();
+			return UserResponseHttp.builder().startDate(String.valueOf(booking.getStartDate()))
+					.endDate(String.valueOf(booking.getEndDate())).status(booking.getStatus()).user(user).device(device)
+					.build();
 
-        } catch (QueryTimeoutException e) {
-            log.error(BookingConstants.TIME_OUT_ERROR, e);
-            throw new BookingTimeoutException(e.getMessage());
+		} catch (QueryTimeoutException e) {
+			log.error(BookingConstants.TIME_OUT_ERROR, e);
+			throw new BookingTimeoutException(e.getMessage());
 
-        } catch (Exception e) {
-            log.error(BookingConstants.SERVER_ERROR, e);
-            throw new ServerErrorException();
-        }
-    }
+		} catch (Exception e) {
+			log.error(BookingConstants.SERVER_ERROR, e);
+			throw new ServerErrorException();
+		}
+	}
 
-    @Override
-    public BookingDTO save(BookingDTO dto) {
-        try {
-            if(!validateFields(dto)) throw new Exception();
+	@Override
+	public BookingDTO save(BookingDTO dto) {
+		try {
 
-            if(dto.getStartDate() == null || dto.getEndDate() == null) {
-                dto.calculateDates();
-            }
+			validateFields(dto);
 
-            BookingEntity bookingSaved = repository.save(
-                    BookingEntity.builder()
-                            .startDate(dto.getStartDate())
-                            .endDate(dto.getEndDate())
-                            .userId(dto.getUserId())
-                            .deviceId(dto.getDeviceId())
-                            .duration(dto.getDuration())
-                            .status("PENDING")
-                            .checkSum(generateCheckSum(dto.getUserId(), dto.getDeviceId()))
-                            .build()
-            );
+			if (dto.getStartDate() == null || dto.getEndDate() == null) {
+				dto.calculateDates();
+			}
 
-            return BookingDTO.convertToDto(bookingSaved);
+			if (repository.existsByUserIdAndDeviceIdAndStatusIn(dto.getUserId(), dto.getDeviceId(),
+					List.of(BookingStatusEnum.PENDING, BookingStatusEnum.APPROVED))) {
+				throw new IllegalArgumentException(BookingConstants.BOOKING_EXISTING_ERROR);
+			}
 
-        } catch (QueryTimeoutException e) {
-            log.error("Error: La consulta tardó más de 30 segundos en responder", e);
+			BookingEntity bookingSaved = repository
+					.save(BookingEntity.builder().startDate(dto.getStartDate()).endDate(dto.getEndDate())
+							.userId(dto.getUserId()).deviceId(dto.getDeviceId()).duration(dto.getDuration())
+							.checkSum(generateCheckSum(dto.getUserId(), dto.getDeviceId())).build());
 
-        }catch (Exception e) {
-            String error = "Error inesperado al obtener la lista de usuarios";
-            log.error(error, e);
-            throw new RuntimeException(error, e);
-        }
-        return null;
-    }
+			return BookingDTO.convertToDto(bookingSaved);
 
-    @Override
-    public BookingDTO update(Long id, BookingDTO dto) {
-        try {
-            UserDTO user = userClient.getById(id);
+		} catch (QueryTimeoutException e) {
+			log.error(BookingConstants.TIME_OUT_ERROR, e);
+			throw new BookingTimeoutException(e.getMessage());
+		} catch (Exception e) {
+			log.error(BookingConstants.BOOKING_EXISTING_ERROR, e);
+			throw new ServerErrorException();
+		}
 
-            if(validateUserNotExists(user)) {
-                throw new Exception();
-            }
+	}
 
-        } catch (QueryTimeoutException e) {
-            log.error("Error: La consulta tardó más de 30 segundos en responder", e);
+	@Override
+	public BookingDTO update(Long id, BookingDTO dto) {
 
-        }catch (Exception e) {
-            String error = "Error inesperado al obtener la lista de usuarios";
-            log.error(error, e);
-            throw new RuntimeException(error, e);
-        }
+		try {
+			BookingEntity booking = repository.findById(id).orElseThrow(BookingNotFoundException::new);
 
+			validateFields(dto);
 
-        return null;
-    }
+			//booking.setStartDate(dto.getStartDate());
+			//booking.setEndDate(dto.getEndDate());
+			booking.setUserId(dto.getUserId());
+			booking.setDeviceId(dto.getDeviceId());
+			booking.setDuration(dto.getDuration());
+			booking.setStatus(dto.getStatus().name());
 
-    /*@Override
-    public UserDTO getUserIsExist(Long id) {
-        // Consultar el microservicio de usuarios
-        UserDTO user = userClient.getById(id);
-        return user;
-    }
+			BookingEntity updatedBooking = repository.save(booking);
 
-    @Override
-    public DeviceDTO getDeviceIsExist(Long id) {
-        return null;
-    }*/
+			return BookingDTO.convertToDto(updatedBooking);
 
-    private String generateCheckSum(Long userId, Long deviceId) {
-        return userId + "-" + deviceId + "-" + System.currentTimeMillis();
-    }
+		} catch (QueryTimeoutException e) {
+			log.error(BookingConstants.TIME_OUT_ERROR, e);
+			throw new BookingTimeoutException(e.getMessage());
+		} catch (BookingNotFoundException e) {
+			log.error(BookingConstants.BOOKING_NOT_FOUND, e);
+			throw e;
+		} catch (Exception e) {
+			log.error(BookingConstants.SERVER_ERROR, e);
+			throw new ServerErrorException();
+		}
 
-    private boolean validateUserNotExists(UserDTO user) {
-        return user != null && !"ACTIVE".equals(user.getStatus());
-    }
+	}
 
-    private boolean validateUserNotExists(DeviceDTO device) {
-        return device != null && !"ACTIVE".equals(device.getTechnicalStatus());
-    }
+	private String generateCheckSum(Long userId, Long deviceId) {
+		String data = userId + "-" + deviceId + "-" + System.currentTimeMillis();
+		return Integer.toHexString(data.hashCode());
+	}
 
-    private boolean validateFields(BookingDTO dto) {
+	private boolean validateUserNotExists(UserDTO user) {
+		return user != null && !BookingConstants.ACTIVE_STATUS.equals(user.getStatus());
+	}
 
-        try {
-            UserDTO user = userClient.getById(dto.getUserId());
-            DeviceDTO device = deviceClient.getById(dto.getDeviceId());
+	private boolean validateDeviceNotExists(DeviceDTO device) {
+		return device != null && !BookingConstants.ACTIVE_STATUS.equals(device.getTechnicalStatus());
+	}
 
-            if(validateUserNotExists(user) || validateUserNotExists(device)) {
-                throw new Exception("\"Parámetros inválidos: usuario o dispositivo no válido");
-            }
-            return true;
-        } catch (QueryTimeoutException e) {
-            log.error("Error: La consulta tardó demasiado tiempo en responder", e);
-            throw new RuntimeException("El servicio no está disponible en este momento. Intente más tarde.", e);
-        } catch (Exception e) {
-            log.error("Error al validar los campos de la reserva", e);
-            throw new RuntimeException("Ocurrió un error al validar los campos de la reserva", e);
-        }
-    }
+	private void validateFields(BookingDTO dto) {
+
+		try {
+			UserDTO user = userClient.getById(dto.getUserId());
+			DeviceDTO device = deviceClient.getById(dto.getDeviceId());
+
+			if (validateUserNotExists(user)) {
+				throw new IllegalArgumentException(BookingConstants.INVALID_USER);
+			}
+
+			if (validateDeviceNotExists(device)) {
+				throw new IllegalArgumentException(BookingConstants.INVALID_DEVICE);
+			}
+		} catch (QueryTimeoutException e) {
+			log.error(BookingConstants.TIME_OUT_ERROR, e);
+			throw new RuntimeException(BookingConstants.SERVER_ERROR, e);
+		} catch (Exception e) {
+			log.error(BookingConstants.BOOKING_ERROR_FIELDS, e);
+			throw new RuntimeException(BookingConstants.GENERAL_ERROR, e);
+		}
+	}
 }
