@@ -12,6 +12,7 @@ import com.solventa.booking.service.exception.BookingTimeoutException;
 import com.solventa.booking.service.exception.ServerErrorException;
 import com.solventa.booking.service.http.response.UserResponseHttp;
 import com.solventa.booking.service.interfaces.IBookingService;
+import com.solventa.booking.util.BookingUtils;
 import com.solventa.booking.util.constants.BookingConstants;
 import com.solventa.booking.util.constants.BookingStatusEnum;
 
@@ -19,6 +20,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.QueryTimeoutException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collections;
 import java.util.List;
@@ -41,14 +43,15 @@ public class BookingService implements IBookingService {
 				UserDTO user = userClient.getById(booking.getUserId());
 				DeviceDTO device = deviceClient.getById(booking.getDeviceId());
 
-				return UserResponseHttp.builder().startDate(String.valueOf(booking.getStartDate()))
-						.endDate(String.valueOf(booking.getEndDate())).status(booking.getStatus()).user(user)
-						.device(device).build();
+				return UserResponseHttp.builder().startDate(BookingUtils.formatLocalDate(booking.getStartDate(), false))
+						.endDate(BookingUtils.formatLocalDate(booking.getEndDate(), false)).status(booking.getStatus())
+						.user(user).device(device).build();
 			}).collect(Collectors.toList());
 
 		} catch (QueryTimeoutException e) {
 			log.error(BookingConstants.TIME_OUT_ERROR, e);
 			throw new BookingTimeoutException(e.getMessage());
+
 		} catch (Exception e) {
 			log.error(BookingConstants.SERVER_ERROR, e);
 			throw new ServerErrorException();
@@ -62,11 +65,16 @@ public class BookingService implements IBookingService {
 			UserDTO user = userClient.getById(booking.getUserId());
 			DeviceDTO device = deviceClient.getById(booking.getDeviceId());
 
-			return UserResponseHttp.builder().startDate(String.valueOf(booking.getStartDate()))
-					.endDate(String.valueOf(booking.getEndDate())).status(booking.getStatus()).user(user).device(device)
-					.build();
+			return UserResponseHttp.builder().startDate(BookingUtils.formatLocalDate(booking.getStartDate(), false))
+					.endDate(BookingUtils.formatLocalDate(booking.getEndDate(), false)).status(booking.getStatus())
+					.user(user).device(device).build();
 
-		} catch (QueryTimeoutException e) {
+		} catch (BookingNotFoundException e) {
+			log.error(BookingConstants.BOOKING_NOT_FOUND, e);
+			throw e;
+
+		} 
+		catch (QueryTimeoutException e) {
 			log.error(BookingConstants.TIME_OUT_ERROR, e);
 			throw new BookingTimeoutException(e.getMessage());
 
@@ -76,6 +84,7 @@ public class BookingService implements IBookingService {
 		}
 	}
 
+	@Transactional
 	@Override
 	public BookingDTO save(BookingDTO dto) {
 		try {
@@ -101,6 +110,7 @@ public class BookingService implements IBookingService {
 		} catch (QueryTimeoutException e) {
 			log.error(BookingConstants.TIME_OUT_ERROR, e);
 			throw new BookingTimeoutException(e.getMessage());
+
 		} catch (Exception e) {
 			log.error(BookingConstants.BOOKING_EXISTING_ERROR, e);
 			throw new ServerErrorException();
@@ -108,6 +118,7 @@ public class BookingService implements IBookingService {
 
 	}
 
+	@Transactional
 	@Override
 	public BookingDTO update(Long id, BookingDTO dto) {
 
@@ -116,8 +127,6 @@ public class BookingService implements IBookingService {
 
 			validateFields(dto);
 
-			//booking.setStartDate(dto.getStartDate());
-			//booking.setEndDate(dto.getEndDate());
 			booking.setUserId(dto.getUserId());
 			booking.setDeviceId(dto.getDeviceId());
 			booking.setDuration(dto.getDuration());

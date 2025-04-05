@@ -5,7 +5,6 @@ import lombok.Getter;
 import lombok.Setter;
 import org.springframework.http.HttpStatus;
 
-import java.time.LocalDateTime;
 import java.util.List;
 
 @Getter
@@ -20,5 +19,5 @@ public class ErrorResponseDTO {
 
     private List<String> detailMessages;
 
-    private LocalDateTime timeStamp;
+    private String timeStamp;
 }

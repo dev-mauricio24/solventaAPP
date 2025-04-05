@@ -9,9 +9,12 @@ import com.solventa.booking.service.http.response.UserResponseHttp;
 import java.util.List;
 
 public interface IBookingService {
-    List<UserResponseHttp> getAll();
-    UserResponseHttp getById(Long id) throws ServerErrorException;
-    BookingDTO save(BookingDTO dto);
-    BookingDTO update(Long id, BookingDTO dto);
+	List<UserResponseHttp> getAll();
+
+	UserResponseHttp getById(Long id) throws ServerErrorException;
+
+	BookingDTO save(BookingDTO dto);
+
+	BookingDTO update(Long id, BookingDTO dto);
 
 }

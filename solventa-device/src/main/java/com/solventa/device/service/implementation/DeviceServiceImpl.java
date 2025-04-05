@@ -3,11 +3,17 @@ package com.solventa.device.service.implementation;
 import com.solventa.device.persistence.entity.DeviceEntity;
 import com.solventa.device.persistence.repository.DeviceRepository;
 import com.solventa.device.presentation.dto.DeviceDTO;
+import com.solventa.device.service.exception.DeviceNotFoundException;
+import com.solventa.device.service.exception.DeviceTimeOutException;
+import com.solventa.device.service.exception.ServerErrorException;
 import com.solventa.device.service.interfaces.IDeviceService;
+import com.solventa.device.utils.DeviceConstants;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.QueryTimeoutException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -16,106 +22,110 @@ import java.util.List;
 @Slf4j
 public class DeviceServiceImpl implements IDeviceService {
 
-    private final DeviceRepository repository;
+	private final DeviceRepository repository;
 
+	@Override
+	public List<DeviceDTO> getAll() {
+		try {
+			List<DeviceEntity> entityList = (List<DeviceEntity>) repository.findAll();
 
-    @Override
-    public List<DeviceDTO> getAll() {
-        log.info("Inicia la solicitud a base de datos para obtener los equipos disponibles");
-        try {
-            List<DeviceEntity> entityList = (List<DeviceEntity>) repository.findAll();
+			return entityList.stream().map(DeviceDTO::convertToDto).toList();
 
-            log.info("Resultado :: " +  entityList.toString());
+		} catch (QueryTimeoutException e) {
+			log.error(DeviceConstants.TIME_OUT_ERROR, e);
+			throw new DeviceTimeOutException();
+			
+		} catch (Exception e) {
+			log.error(DeviceConstants.SERVER_ERROR, e);
+			throw new ServerErrorException();
+		}
+	}
 
-            return entityList.stream()
-                    .map(DeviceDTO::convertToDto)
-                    .toList();
+	@Override
+	public DeviceDTO getById(Long id) {
 
-        } catch (QueryTimeoutException e) {
-            log.error("Conexión con base de datos excedida :: ", e);
-            throw new RuntimeException(e.getMessage());
-        }
-        catch (Exception e) {
-            log.error("Ocurrió un error inesperado:: ", e);
-            throw new RuntimeException(e);
-        }
-    }
+		try {
+			DeviceEntity entity = repository.findById(id).orElseThrow(DeviceNotFoundException::new);
+			return DeviceDTO.convertToDto(entity);
 
-    @Override
-    public DeviceDTO getById(Long id) {
+		} catch (DeviceNotFoundException e) {
+			log.error(DeviceConstants.DEVICE_NOT_FOUND, e);
+			throw e;
+			
+		} catch (QueryTimeoutException e) {
+			log.error(DeviceConstants.TIME_OUT_ERROR, e);
+			throw new DeviceTimeOutException();
+			
+		} catch (Exception e) {
+			log.error(DeviceConstants.SERVER_ERROR, e);
+			throw new ServerErrorException();
+		}
+	}
 
-        try {
-            DeviceEntity entity = repository.findById(id).orElseThrow();
-            return DeviceDTO.convertToDto(entity);
+	@Transactional
+	@Override
+	public DeviceDTO save(DeviceDTO dto) {
 
-        } catch (QueryTimeoutException e) {
-            log.error("Conexión con base de datos excedida :: ", e);
-            throw new RuntimeException(e.getMessage());
-        }
-        catch (Exception e) {
-            log.error("Ocurrió un error inesperado:: ", e);
-            throw new RuntimeException(e);
-        }
-    }
+		try {
+			DeviceEntity entity = repository.save(DeviceDTO.converToEntity(dto));
+			return DeviceDTO.convertToDto(entity);
 
-    @Override
-    public DeviceDTO save(DeviceDTO dto) {
+		} catch (QueryTimeoutException e) {
+			log.error(DeviceConstants.TIME_OUT_ERROR, e);
+			throw new DeviceTimeOutException();
+			
+		} catch (Exception e) {
+			log.error(DeviceConstants.SERVER_ERROR, e);
+			throw new ServerErrorException();
+		}
 
-        try {
-            DeviceEntity entity = repository.save(DeviceDTO.converToEntity(dto));
-            return DeviceDTO.convertToDto(entity);
+	}
 
-        } catch (QueryTimeoutException e) {
-            log.error("Conexión con base de datos excedida :: ", e);
-            throw new RuntimeException(e.getMessage());
-        }
-        catch (Exception e) {
-            log.error("Ocurrió un error inesperado:: ", e);
-            throw new RuntimeException(e);
-        }
+	@Transactional
+	@Override
+	public DeviceDTO update(Long id, DeviceDTO dto) {
+		try {
+			DeviceEntity entity = repository.findById(id).orElseThrow(DeviceNotFoundException::new);
+			entity.setMaker(dto.getMaker());
+			entity.setSerial(dto.getSerial());
+			entity.setType(dto.getType());
+			entity.setTechnicalStatus(dto.getTechnicalStatus());
+			entity.setDescription(dto.getDescription());
 
-    }
+			DeviceEntity updateEntity = repository.save(entity);
 
-    @Override
-    public DeviceDTO update(Long id, DeviceDTO dto) {
-        try {
-            DeviceEntity entity = repository.findById(id).orElseThrow();
-            entity.setMaker(dto.getMaker());
-            entity.setSerial(dto.getSerial());
-            entity.setType(dto.getType());
-            entity.setTechnicalStatus(dto.getTechnicalStatus());
-            entity.setDescription(dto.getDescription());
+			return DeviceDTO.convertToDto(updateEntity);
 
-            DeviceEntity updateEntity = repository.save(entity);
+		} catch (DeviceNotFoundException e) {
+			log.error(DeviceConstants.DEVICE_NOT_FOUND, e);
+			throw e;
+			
+		} catch (QueryTimeoutException e) {
+			log.error(DeviceConstants.TIME_OUT_ERROR, e);
+			throw new DeviceTimeOutException();
+			
+		} catch (Exception e) {
+			log.error(DeviceConstants.SERVER_ERROR, e);
+			throw new ServerErrorException();
+		}
+	}
 
-            return DeviceDTO.convertToDto(updateEntity);
+	@Override
+	public void delete(Long id) {
+		try {
+			if (!repository.existsById(id)) {
+				log.error(DeviceConstants.DEVICE_NOT_FOUND);
+				throw new DeviceNotFoundException();
+			}
+			repository.deleteById(id);
 
-        } catch (QueryTimeoutException e) {
-            log.error("Conexión con base de datos excedida :: ", e);
-            throw new RuntimeException(e.getMessage());
-        }
-        catch (Exception e) {
-            log.error("Ocurrió un error inesperado:: ", e);
-            throw new RuntimeException(e);
-        }
-    }
-
-    @Override
-    public void delete(Long id) {
-        try{
-            if (!repository.existsById(id)) {
-                log.error("Error: device not found");
-                throw new Exception();
-            }
-            repository.deleteById(id);
-
-        } catch (QueryTimeoutException e) {
-            log.error("Conexión con base de datos excedida :: ", e);
-            throw new RuntimeException(e.getMessage());
-        }
-        catch (Exception e) {
-            log.error("Ocurrió un error inesperado:: ", e);
-            throw new RuntimeException(e);
-        }
-    }
+		} catch (QueryTimeoutException e) {
+			log.error(DeviceConstants.TIME_OUT_ERROR, e);
+			throw new DeviceTimeOutException();
+			
+		} catch (Exception e) {
+			log.error(DeviceConstants.SERVER_ERROR, e);
+			throw new ServerErrorException();
+		}
+	}
 }

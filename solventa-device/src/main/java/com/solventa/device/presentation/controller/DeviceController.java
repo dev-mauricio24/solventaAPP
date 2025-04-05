@@ -28,7 +28,7 @@ public class DeviceController {
     @PostMapping()
     public ResponseEntity<?> save(@RequestBody DeviceDTO dto) {
 
-        return ResponseEntity.ok(service.save(dto));
+        return ResponseEntity.status(201).body(service.save(dto));
     }
 
     @PutMapping("/{id}")
